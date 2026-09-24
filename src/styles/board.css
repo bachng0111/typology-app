@@ -134,7 +134,8 @@
   width: 0;
   height: 0;
   transform-origin: 0 0;
-  will-change: transform;
+  /* No will-change here: a promoted layer is rastered once and rescaled every frame,
+     which is far slower than repainting when the board holds thousands of cards. */
 }
 .layer-buckets,
 .layer-cards {

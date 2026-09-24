@@ -121,7 +121,7 @@ export default function Toolbar({ onAddItems, onExport, onHelp }: Props) {
         <button className="btn btn-icon" onClick={() => zoomAt(1 / 1.2)} aria-label="Zoom out" title="Zoom out (−)">
           −
         </button>
-        <button className="btn btn-zoom" onClick={fitToContent} title="Fit everything in view (F)">
+        <button className="btn btn-zoom" onClick={() => fitToContent()} title="Fit everything in view (F)">
           {Math.round(zoom * 100)}%
         </button>
         <button className="btn btn-icon" onClick={() => zoomAt(1.2)} aria-label="Zoom in" title="Zoom in (+)">

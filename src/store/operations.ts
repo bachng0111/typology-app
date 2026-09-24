@@ -2,7 +2,7 @@
  * Pure board operations. Each takes the current content and returns a new object,
  * sharing untouched structure so undo snapshots stay cheap.
  */
-import { boundsOf, packCards, shuffle, type Rng } from '../lib/layout';
+import { boundsOf, packCards, rectsOverlap, shuffle, type Rng } from '../lib/layout';
 import { cardSize } from '../lib/measure';
 import { newId } from '../lib/id';
 import { BUCKET_COLORS } from '../lib/colors';
@@ -189,6 +189,44 @@ export function assignItem(content: BoardContent, id: string, bucketId: string, 
   if (before.length === list.length && before.every((v, i) => v === list[i])) return content;
   buckets[bucketId] = { ...buckets[bucketId], itemIds: list };
   return { ...content, buckets };
+}
+
+/**
+ * Choose a spot for a new bucket: free space inside `visible` (closest to its centre) if there is any,
+ * otherwise the first free cell of a grid to the right of the existing content.
+ */
+export function findBucketSpot(content: BoardContent, visible: Rect): { x: number; y: number } {
+  const w = DEFAULT_BUCKET_W;
+  const h = DEFAULT_BUCKET_H;
+  const gap = 16;
+  const all = [...bucketRects(content), ...ungroupedRects(content)];
+  const free = (r: Rect, obstacles: Rect[]) => !obstacles.some((o) => rectsOverlap(r, o, gap));
+
+  const inset = 16;
+  const region = { x: visible.x + inset, y: visible.y + inset, w: visible.w - 2 * inset - w, h: visible.h - 2 * inset - h };
+  if (region.w >= 0 && region.h >= 0) {
+    const nearby = all.filter((o) => rectsOverlap(o, visible, gap));
+    const step = Math.max(12, Math.min(region.w, region.h) / 30);
+    const cx = region.x + region.w / 2;
+    const cy = region.y + region.h / 2;
+    const candidates: { x: number; y: number; d: number }[] = [];
+    for (let x = region.x; x <= region.x + region.w; x += step)
+      for (let y = region.y; y <= region.y + region.h; y += step) candidates.push({ x, y, d: (x - cx) ** 2 + (y - cy) ** 2 });
+    candidates.sort((a, b) => a.d - b.d);
+    for (const c of candidates) if (free({ x: c.x, y: c.y, w, h }, nearby)) return { x: c.x, y: c.y };
+  }
+
+  const bounds = contentBounds(content) ?? { x: visible.x, y: visible.y, w: 0, h: 0 };
+  const cellW = w + 32;
+  const cellH = h + 32;
+  const rows = Math.max(2, Math.floor(bounds.h / cellH));
+  const origin = { x: bounds.x + bounds.w + 64, y: bounds.y };
+  for (let col = 0; ; col++) {
+    for (let row = 0; row < rows; row++) {
+      const r = { x: origin.x + col * cellW, y: origin.y + row * cellH, w, h };
+      if (free(r, all)) return { x: r.x, y: r.y };
+    }
+  }
 }
 
 function nextColorIndex(content: BoardContent): number {

@@ -3,8 +3,15 @@ import { useBoardStore } from '../../store/boardStore';
 import { currentViewport, getGhostEl, getViewportEl, panBy, spacePan, toBoard } from './viewport';
 
 const DRAG_THRESHOLD = 4;
-const EDGE = 48;
-const EDGE_SPEED = 14;
+const EDGE = 36;
+const EDGE_SPEED = 16;
+
+/** Auto-pan speed: 0 outside the edge zone, ramping up as the pointer nears the edge. */
+function edgeSpeed(pos: number, min: number, max: number): number {
+  if (pos < min + EDGE) return EDGE_SPEED * Math.min(1, (min + EDGE - pos) / EDGE);
+  if (pos > max - EDGE) return -EDGE_SPEED * Math.min(1, (pos - (max - EDGE)) / EDGE);
+  return 0;
+}
 
 /** Topmost bucket containing the board point, or null. */
 export function hitBucket(p: { x: number; y: number }): string | null {
@@ -76,10 +83,8 @@ export function useItemDrag(itemId: string) {
         let dx = 0;
         let dy = 0;
         if (vp) {
-          if (last.x < vp.left + EDGE) dx = EDGE_SPEED;
-          else if (last.x > vp.right - EDGE) dx = -EDGE_SPEED;
-          if (last.y < vp.top + EDGE) dy = EDGE_SPEED;
-          else if (last.y > vp.bottom - EDGE) dy = -EDGE_SPEED;
+          dx = edgeSpeed(last.x, vp.left, vp.right);
+          dy = edgeSpeed(last.y, vp.top, vp.bottom);
         }
         if (dx || dy) panBy(dx, dy);
         placeGhost();

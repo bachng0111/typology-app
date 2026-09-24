@@ -59,7 +59,9 @@ export function startAutosave() {
       return;
     }
     pending = state.board;
-    if (state.saveStatus !== 'saving') useBoardStore.getState().setSaveStatus('saving');
+    // Pan/zoom is saved too, but quietly: only real edits show "Saving…".
+    const viewOnly = state.board.updatedAt === prev.board.updatedAt;
+    if (!viewOnly && state.saveStatus !== 'saving') useBoardStore.getState().setSaveStatus('saving');
     if (timer) clearTimeout(timer);
     timer = setTimeout(flushSave, DEBOUNCE_MS);
   });

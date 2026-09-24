@@ -54,9 +54,10 @@ export default function Canvas() {
 
   useEffect(() => {
     registerViewportEl(vpRef.current);
-    const v = useBoardStore.getState().board?.viewport;
+    const board = useBoardStore.getState().board;
+    const v = board?.viewport;
     // A new or never-panned board: frame its content.
-    if (v && v.x === 0 && v.y === 0 && v.zoom === 1) fitToContent();
+    if (v && v.x === 0 && v.y === 0 && v.zoom === 1) fitToContent(board.bucketOrder.length === 0);
     return () => registerViewportEl(null);
   }, []);
 

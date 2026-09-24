@@ -6,7 +6,7 @@ import { useBoardStore } from '../../store/boardStore';
 import { contentBounds } from '../../store/operations';
 import type { Rect, Viewport } from '../../store/types';
 
-export const MIN_ZOOM = 0.15;
+export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 3;
 export const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
@@ -68,9 +68,8 @@ export function panBy(dx: number, dy: number) {
   setViewport({ ...v, x: v.x + dx, y: v.y + dy });
 }
 
-export function fitRect(rect: Rect, maxZoom = 1.25) {
+export function fitRect(rect: Rect, maxZoom = 1, pad = 48) {
   const { w, h } = viewportSize();
-  const pad = 48;
   const zoom = clampZoom(Math.min(maxZoom, (w - pad * 2) / Math.max(rect.w, 1), (h - pad * 2) / Math.max(rect.h, 1)));
   setViewport({
     zoom,
@@ -79,21 +78,28 @@ export function fitRect(rect: Rect, maxZoom = 1.25) {
   });
 }
 
-export function fitToContent() {
+/**
+ * Frame all content. With `roomForBuckets`, space is left on the right so the first
+ * buckets can be created next to the items without changing the view.
+ */
+export function fitToContent(roomForBuckets = false) {
   const board = useBoardStore.getState().board;
   if (!board) return;
   const b = contentBounds(board);
   if (!b) setViewport({ x: viewportSize().w / 2, y: viewportSize().h / 3, zoom: 1 });
+  else if (roomForBuckets) fitRect({ ...b, w: b.w + Math.max(320, b.w * 0.5) });
   else fitRect(b);
 }
 
-/** Pan (without zooming) so that `rect` is visible, if it isn't already. */
-export function ensureVisible(rect: Rect) {
-  const vis = visibleRect();
-  const inside = rect.x >= vis.x && rect.y >= vis.y && rect.x + rect.w <= vis.x + vis.w && rect.y + rect.h <= vis.y + vis.h;
-  if (inside) return;
+/** Pan (without zooming) so that `rect` is comfortably visible (at least `margin` screen px from the edges). */
+export function ensureVisible(rect: Rect, margin = 80) {
   const v = currentViewport();
   const { w, h } = viewportSize();
+  const m = margin / v.zoom;
+  const vis = visibleRect();
+  const inside =
+    rect.x >= vis.x + m && rect.y >= vis.y + m && rect.x + rect.w <= vis.x + vis.w - m && rect.y + rect.h <= vis.y + vis.h - m;
+  if (inside) return;
   setViewport({ ...v, x: w / 2 - (rect.x + rect.w / 2) * v.zoom, y: h / 2 - (rect.y + rect.h / 2) * v.zoom });
 }
 

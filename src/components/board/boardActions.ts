@@ -1,18 +1,24 @@
 import { useBoardStore } from '../../store/boardStore';
-import { DEFAULT_BUCKET_H, DEFAULT_BUCKET_W, ungroupedIds } from '../../store/operations';
+import { DEFAULT_BUCKET_H, DEFAULT_BUCKET_W, findBucketSpot, ungroupedIds } from '../../store/operations';
+import { boundsOf } from '../../lib/layout';
 import { confirmAction } from '../ConfirmDialog';
 import { renderBoardPNG } from '../../lib/exportImage';
 import { downloadBlob } from '../../lib/download';
 import { safeFileName } from '../../lib/export';
 import { boardToJSON } from '../../lib/storage';
-import { ensureVisible, fitToContent, visibleCenter } from './viewport';
+import { currentViewport, fitRect, fitToContent, visibleRect } from './viewport';
 
+/** Create a bucket in free space, keeping the current view (zooming out only if needed). */
 export function addBucket() {
   const s = useBoardStore.getState();
-  const c = visibleCenter();
-  const id = s.createBucket({ x: c.x - DEFAULT_BUCKET_W / 2, y: c.y - DEFAULT_BUCKET_H / 2 });
-  const b = id ? useBoardStore.getState().board?.buckets[id] : null;
-  if (b) ensureVisible(b);
+  if (!s.board) return;
+  const visible = visibleRect();
+  const spot = findBucketSpot(s.board, visible);
+  s.createBucket(spot, true);
+  const b = { ...spot, w: DEFAULT_BUCKET_W, h: DEFAULT_BUCKET_H };
+  const inView =
+    b.x >= visible.x && b.y >= visible.y && b.x + b.w <= visible.x + visible.w && b.y + b.h <= visible.y + visible.h;
+  if (!inView) fitRect(boundsOf([visible, b])!, currentViewport().zoom);
 }
 
 export function shuffleUngrouped() {
@@ -34,7 +40,7 @@ export async function resetGrouping() {
   });
   if (!ok) return;
   useBoardStore.getState().resetGrouping(checked);
-  requestAnimationFrame(fitToContent);
+  requestAnimationFrame(() => fitToContent());
   useBoardStore.getState().showToast('Board reset', { undo: true });
 }
 

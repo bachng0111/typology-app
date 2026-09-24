@@ -30,9 +30,9 @@ export default function HintBar({ onAddItems }: { onAddItems(): void }) {
   } else if (buckets === 0) {
     step = (
       <>
-        <strong>Next: create a bucket</strong> for a group.{' '}
+        <strong>Next: create a bucket</strong> for each group.{' '}
         <button className="link-btn" onClick={addBucket}>
-          + Bucket
+          Create a bucket
         </button>{' '}
         or double-click empty space.
       </>
