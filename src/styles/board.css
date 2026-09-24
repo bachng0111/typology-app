@@ -1,0 +1,509 @@
+.board-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: relative;
+  z-index: 20;
+}
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toolbar-end {
+  margin-left: auto;
+}
+.dropdown {
+  position: relative;
+}
+.board-title {
+  width: 220px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 10px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.02rem;
+  background: transparent;
+  text-overflow: ellipsis;
+}
+.board-title:hover {
+  border-color: var(--border);
+}
+.board-title:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  background: #fff;
+}
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.save-status .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+}
+.save-status.is-saving .dot {
+  background: #f59e0b;
+}
+.save-status.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.save-status.is-error .dot {
+  background: var(--danger);
+}
+.btn-zoom {
+  width: 64px;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 7px 16px;
+  background: var(--primary-soft);
+  border-bottom: 1px solid #e0e7ff;
+  font-size: 0.88rem;
+  color: #312e81;
+  position: relative;
+  z-index: 10;
+}
+.hint-step {
+  flex: 1;
+  min-width: 240px;
+}
+.hint-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4338ca;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Canvas */
+.viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+.viewport.is-panning,
+.viewport.space-pan,
+.viewport.space-pan * {
+  cursor: grabbing !important;
+}
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.layer-buckets,
+.layer-cards {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.layer-cards {
+  z-index: 2;
+}
+body.is-dragging-item,
+body.is-dragging-item * {
+  cursor: grabbing !important;
+}
+
+.board-empty {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  max-width: 420px;
+  padding: 20px 24px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.85);
+  text-align: center;
+  pointer-events: none;
+}
+.board-empty p {
+  margin: 0.25rem 0;
+}
+
+/* Loose item cards. Metrics must match src/lib/measure.ts */
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: max-content;
+  min-width: 48px;
+  max-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08), 0 2px 6px rgb(15 23 42 / 0.06);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  cursor: grab;
+  touch-action: none;
+  contain: layout style;
+  transition: box-shadow 0.12s, border-color 0.12s, opacity 0.12s;
+}
+.card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 2px 4px rgb(15 23 42 / 0.1), 0 6px 14px rgb(15 23 42 / 0.1);
+  z-index: 3;
+}
+.card.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary), var(--shadow-md);
+  z-index: 4;
+}
+.card.is-dragging {
+  opacity: 0.3;
+  border-style: dashed;
+  box-shadow: none;
+}
+.card.is-editing {
+  z-index: 5;
+  width: 200px;
+  cursor: text;
+}
+.card-delete {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 20px;
+  height: 20px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.card:hover .card-delete,
+.card.is-selected .card-delete {
+  display: grid;
+}
+.card-delete:hover {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.drag-ghost {
+  display: none;
+  z-index: 1000;
+  pointer-events: none;
+  cursor: grabbing;
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.25);
+  border-color: var(--primary);
+  rotate: -2deg;
+}
+.drag-ghost.is-visible {
+  display: block;
+}
+.drag-ghost.over-bucket {
+  rotate: 0deg;
+  border-width: 2px;
+}
+
+.inline-editor {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+
+/* Buckets */
+.bucket {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--tint) 92%, transparent);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.08);
+  transition: box-shadow 0.12s, transform 0.05s, outline-color 0.12s;
+  outline: 0 solid transparent;
+}
+.bucket.is-empty {
+  border-style: dashed;
+}
+.bucket.is-raised,
+.bucket.is-moving {
+  z-index: 1;
+}
+.bucket.is-moving {
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.2);
+  transition: none;
+}
+.bucket.is-drop-target {
+  outline: 4px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 0 0 2px var(--accent), 0 14px 30px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--tint);
+  border-style: solid;
+}
+.bucket-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  flex: none;
+  padding: 0 6px 0 12px;
+  border-radius: 11px 11px 0 0;
+  background: var(--accent);
+  color: #fff;
+  cursor: move;
+  touch-action: none;
+}
+.bucket-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bucket-name.is-unnamed {
+  font-style: italic;
+  opacity: 0.85;
+}
+.bucket-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+.bucket-name-input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+.bucket-count {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.25);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.bucket-menu {
+  position: relative;
+}
+.bucket-menu-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.bucket-menu-btn:hover,
+.bucket-menu-btn[aria-expanded='true'] {
+  background: rgb(255 255 255 / 0.2);
+}
+.bucket .menu {
+  left: auto;
+  right: 0;
+  cursor: default;
+}
+.bucket-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
+  padding: 10px;
+  overflow: auto;
+  cursor: default;
+}
+.bucket-empty {
+  margin: auto;
+  color: color-mix(in srgb, var(--accent) 70%, #475569);
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+}
+.drop-label {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+.drop-marker {
+  display: block;
+  width: 3px;
+  margin: 0 -4.5px 0 -4.5px;
+  align-self: stretch;
+  min-height: 24px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.bucket-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, color-mix(in srgb, var(--accent) 60%, transparent) 50%, transparent 62%,
+    color-mix(in srgb, var(--accent) 60%, transparent) 62%, transparent 74%);
+  border-bottom-right-radius: 12px;
+}
+
+/* Items inside buckets. Metrics must match src/lib/exportImage.ts */
+.chip {
+  position: relative;
+  max-width: 100%;
+  padding: 5px 10px 5px 12px;
+  border-radius: 6px;
+  background: var(--chip);
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  cursor: grab;
+  touch-action: none;
+  transition: background 0.1s;
+}
+.chip:hover {
+  background: color-mix(in srgb, var(--chip) 80%, var(--accent));
+}
+.chip.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.chip.is-dragging {
+  opacity: 0.35;
+}
+.chip.is-editing {
+  width: 100%;
+  background: #fff;
+  cursor: text;
+}
+.chip-actions {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  display: none;
+  gap: 2px;
+}
+.chip:hover .chip-actions,
+.chip.is-selected .chip-actions {
+  display: flex;
+}
+.chip-actions button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.chip-actions button:hover {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.chip-actions button[aria-label^='Delete']:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .board-title {
+    width: 140px;
+  }
+  .toolbar {
+    gap: 6px 8px;
+  }
+  .toolbar-end {
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,224 @@
+.wizard {
+  display: flex;
+  flex-direction: column;
+}
+.steps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.steps li {
+  flex: 1;
+  padding-top: 6px;
+  border-top: 3px solid var(--border);
+}
+.steps li.current {
+  color: var(--primary);
+  font-weight: 600;
+  border-top-color: var(--primary);
+}
+.steps li.done {
+  color: var(--text);
+  border-top-color: #a5b4fc;
+}
+
+.panel {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.empty-panel p {
+  margin: 0;
+}
+
+.dropzone {
+  padding: 24px;
+  margin-bottom: 1rem;
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
+  text-align: center;
+  background: #f8fafc;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dropzone.over {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.dropzone p {
+  margin: 0.25rem 0;
+}
+.file-loaded {
+  color: #047857;
+  font-weight: 500;
+}
+
+.delimiter-picker {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+.delimiter-picker legend {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  cursor: pointer;
+  justify-content: center;
+}
+.segment.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.segment.custom {
+  font-family: var(--font);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding-right: 4px;
+}
+.segment.custom input {
+  width: 64px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 0 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.parse-preview {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.parse-preview p {
+  margin: 0 0 8px;
+}
+.chip-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 150px;
+  overflow: auto;
+}
+.preview-chip {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-sm);
+}
+.hint {
+  margin-top: 8px !important;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: #78350f;
+  font-size: 0.88rem;
+}
+
+.wizard-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 1.25rem;
+}
+
+.review {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+.review-filter {
+  width: 180px;
+  margin-left: auto;
+}
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: min(52vh, 480px);
+  overflow: auto;
+}
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.review-row:hover {
+  background: #f8fafc;
+}
+.review-row.is-empty .review-input {
+  border-color: var(--warn);
+}
+.review-index {
+  width: 32px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.review-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 8px;
+  font: inherit;
+  background: transparent;
+}
+.review-input:hover {
+  border-color: var(--border);
+}
+.review-input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  background: #fff;
+}
+.review-add {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: #f8fafc;
+}
+.empty-note {
+  padding: 24px;
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+}
