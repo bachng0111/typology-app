@@ -173,3 +173,40 @@ test('empty board, reset grouping and re-randomize', async ({ page }) => {
   await expect(page.locator('.bucket')).toHaveCount(0);
   await expect(page.locator('.layer-cards .card')).toHaveCount(4);
 });
+
+test('pinch / Ctrl+scroll anywhere zooms the board, never the page', async ({ page }) => {
+  await createBoard(page, 'Zoom', 'doctor/nurse/pharmacist/customer service/product quality');
+  await page.getByRole('button', { name: /create board with 5 items/i }).click();
+  const zoomLabel = page.locator('.btn-zoom');
+  const zoomValue = async () => parseInt((await zoomLabel.textContent()) ?? '0', 10);
+
+  // Chrome/Edge: trackpad pinch arrives as Ctrl+wheel. Over the hint bar it must zoom the board.
+  const before = await zoomValue();
+  const hint = (await page.locator('.hint-bar').boundingBox())!;
+  await page.mouse.move(hint.x + 20, hint.y + hint.height / 2);
+  const prevented = page.evaluate(
+    () => new Promise<boolean>((resolve) => window.addEventListener('wheel', (e) => setTimeout(() => resolve(e.defaultPrevented)), { once: true })),
+  );
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -200);
+  await page.keyboard.up('Control');
+  expect(await prevented).toBe(true);
+  await expect.poll(zoomValue).toBeGreaterThan(before);
+  expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+  await expect(page.locator('.toolbar')).toBeInViewport();
+
+  // Safari: pinch arrives as gesture events.
+  const beforeGesture = await zoomValue();
+  const gesturePrevented = await page.evaluate(() => {
+    const fire = (type: string, scale: number) => {
+      const e = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(e, { scale: { value: scale }, clientX: { value: 20 }, clientY: { value: 20 } });
+      document.body.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    return [fire('gesturestart', 1), fire('gesturechange', 1.5), fire('gestureend', 1.5)];
+  });
+  expect(gesturePrevented).toEqual([true, true, true]);
+  await expect.poll(zoomValue).toBeGreaterThan(beforeGesture);
+  await expect(page.locator('.toolbar')).toBeInViewport();
+});

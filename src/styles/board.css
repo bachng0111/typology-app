@@ -3,6 +3,8 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  /* A touch pinch on the toolbar must not zoom the page; the canvas handles its own pinch. */
+  touch-action: pan-x pan-y;
 }
 
 /* Toolbar */

@@ -13,6 +13,19 @@ function canScroll(target: EventTarget | null, dy: number): boolean {
   return dy < 0 ? body.scrollTop > 0 : body.scrollTop + body.clientHeight < body.scrollHeight - 1;
 }
 
+/** Zoom factor for a Ctrl/⌘+wheel event (trackpad pinch in Chrome/Edge/Firefox arrives this way). */
+function wheelZoomFactor(e: WheelEvent): number {
+  const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+  return Math.exp(-e.deltaY * unit * 0.0025);
+}
+
+/** Safari's non-standard pinch event (not in the TS DOM lib). */
+interface GestureEventLike extends Event {
+  scale: number;
+  clientX: number;
+  clientY: number;
+}
+
 /**
  * Pan with drag on empty space (or anywhere with space held / middle button),
  * wheel/trackpad scroll to pan, Ctrl/⌘+wheel or pinch to zoom around the cursor.
@@ -22,13 +35,14 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, isBackground: 
     const el = ref.current;
     if (!el) return;
     const setViewport = useBoardStore.getState().setViewport;
+    // While a Safari gesture is active, ignore any Ctrl+wheel it may also emit (avoids double zoom).
+    let gestureActive = false;
 
     const onWheel = (e: WheelEvent) => {
       const r = el.getBoundingClientRect();
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
-        zoomAt(Math.exp(-e.deltaY * unit * 0.0025), e.clientX - r.left, e.clientY - r.top);
+        if (!gestureActive) zoomAt(wheelZoomFactor(e), e.clientX - r.left, e.clientY - r.top);
         return;
       }
       if (canScroll(e.target, e.deltaY)) return;
@@ -38,6 +52,36 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, isBackground: 
       const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
       const dy = e.shiftKey && !e.deltaX ? 0 : e.deltaY;
       setViewport({ ...v, x: v.x - dx * unit, y: v.y - dy * unit });
+    };
+
+    // Pinch/Ctrl+wheel outside the canvas (toolbar, hint bar, dialogs) must not zoom the browser page,
+    // which would push the toolbar out of view. Zoom the board around its centre instead.
+    const onWindowWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.defaultPrevented) return;
+      e.preventDefault();
+      if (!gestureActive && !document.querySelector('dialog[open]')) zoomAt(wheelZoomFactor(e));
+    };
+
+    // Safari reports trackpad pinch as gesture events rather than Ctrl+wheel.
+    let gestureStartZoom = 1;
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      gestureActive = true;
+      gestureStartZoom = currentViewport().zoom;
+    };
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const g = e as GestureEventLike;
+      if (!Number.isFinite(g.scale) || g.scale <= 0 || document.querySelector('dialog[open]')) return;
+      const r = el.getBoundingClientRect();
+      const inside = g.clientX >= r.left && g.clientX <= r.right && g.clientY >= r.top && g.clientY <= r.bottom;
+      const factor = (gestureStartZoom * g.scale) / currentViewport().zoom;
+      if (inside) zoomAt(factor, g.clientX - r.left, g.clientY - r.top);
+      else zoomAt(factor);
+    };
+    const onGestureEnd = (e: Event) => {
+      e.preventDefault();
+      gestureActive = false;
     };
 
     // Active pointers for pan / pinch.
@@ -120,6 +164,10 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, isBackground: 
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('wheel', onWindowWheel, { passive: false });
+    document.addEventListener('gesturestart', onGestureStart, { passive: false });
+    document.addEventListener('gesturechange', onGestureChange, { passive: false });
+    document.addEventListener('gestureend', onGestureEnd, { passive: false });
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', onPointerUp);
@@ -129,6 +177,10 @@ export function usePanZoom(ref: RefObject<HTMLDivElement | null>, isBackground: 
     window.addEventListener('blur', onBlur);
     return () => {
       el.removeEventListener('wheel', onWheel);
+      window.removeEventListener('wheel', onWindowWheel);
+      document.removeEventListener('gesturestart', onGestureStart);
+      document.removeEventListener('gesturechange', onGestureChange);
+      document.removeEventListener('gestureend', onGestureEnd);
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);
