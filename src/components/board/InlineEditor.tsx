@@ -8,6 +8,10 @@ interface Props {
   placeholder?: string;
   className?: string;
   ariaLabel: string;
+  /** When false, Enter inserts a new line and Ctrl/⌘+Enter saves. */
+  submitOnEnter?: boolean;
+  /** When true, Escape keeps the edit instead of discarding it. */
+  commitOnEscape?: boolean;
   onCommit(value: string): void;
   onCancel(): void;
 }
@@ -20,6 +24,8 @@ export default function InlineEditor({
   placeholder,
   className,
   ariaLabel,
+  submitOnEnter = true,
+  commitOnEscape = false,
   onCommit,
   onCancel,
 }: Props) {
@@ -62,12 +68,12 @@ export default function InlineEditor({
     onDoubleClick: (e: MouseEvent) => e.stopPropagation(),
     onKeyDown: (e: KeyboardEvent) => {
       e.stopPropagation();
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && (submitOnEnter ? !e.shiftKey : e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         finish(true);
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        finish(false);
+        finish(commitOnEscape);
       }
     },
   };

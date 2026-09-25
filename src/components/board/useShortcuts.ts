@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useBoardStore } from '../../store/boardStore';
 import { saveNow } from '../../store/persist';
-import { addBucket, deleteSelectedItem } from './boardActions';
+import { addBucket, addNote, deleteSelectedItem } from './boardActions';
 import { fitToContent, zoomAt } from './viewport';
 
 function isTyping(target: EventTarget | null) {
@@ -49,6 +49,11 @@ export function useShortcuts(opts: { onHelp(): void; disabled: boolean }) {
         case 'B':
           e.preventDefault();
           addBucket();
+          break;
+        case 'n':
+        case 'N':
+          e.preventDefault();
+          addNote();
           break;
         case 'f':
         case 'F':

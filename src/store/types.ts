@@ -18,6 +18,16 @@ export interface Bucket {
   itemIds: string[];
 }
 
+/** A free-floating sticky-note comment. */
+export interface Note {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Viewport {
   x: number;
   y: number;
@@ -29,6 +39,7 @@ export interface BoardContent {
   items: Record<string, Item>;
   buckets: Record<string, Bucket>;
   bucketOrder: string[];
+  notes: Record<string, Note>;
 }
 
 export interface Board extends BoardContent {

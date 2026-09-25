@@ -11,7 +11,7 @@ import {
   StorageError,
   type KVStore,
 } from './storage';
-import { assignItem, createBucket, createContent, renameBucket } from '../store/operations';
+import { assignItem, createBucket, createContent, createNote, renameBucket } from '../store/operations';
 import type { Board } from '../store/types';
 
 class MemoryStore implements KVStore {
@@ -34,6 +34,7 @@ function makeBoard(): Board {
   c = renameBucket(bk.content, bk.id, 'Healthcare');
   c = assignItem(c, a, bk.id);
   c = assignItem(c, b, bk.id);
+  c = createNote(c, { x: 400, y: 50 }, 'Remember:\ncheck these').content;
   return { version: 1, id: 'board_x', name: 'My board', delimiter: ',', createdAt: 1, updatedAt: 2, viewport: { x: 5, y: 6, zoom: 0.5 }, ...c };
 }
 
@@ -83,6 +84,26 @@ describe('storage', () => {
     expect(b.buckets.k2.itemIds).toEqual(['c']);
     expect(b.bucketOrder).toEqual(['k1', 'k2']);
     expect(b.viewport.zoom).toBe(1);
+  });
+
+  it('loads boards saved before notes existed', () => {
+    const b = sanitizeBoard({ items: { a: { text: 'A', x: 0, y: 0 } } })!;
+    expect(b.notes).toEqual({});
+  });
+
+  it('drops invalid notes and clamps sizes', () => {
+    const b = sanitizeBoard({
+      items: {},
+      notes: {
+        ok: { text: 'hi', x: 1, y: 2, w: 5, h: 99999 },
+        noPos: { text: 'x' },
+        bad: 'nope',
+        noText: { x: 0, y: 0 },
+      },
+    })!;
+    expect(Object.keys(b.notes).sort()).toEqual(['noText', 'ok']);
+    expect(b.notes.ok).toMatchObject({ text: 'hi', w: 120, h: 2000 });
+    expect(b.notes.noText.text).toBe('');
   });
 
   it('imports backups with a fresh id', () => {

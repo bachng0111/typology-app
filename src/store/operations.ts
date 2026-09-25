@@ -7,15 +7,20 @@ import { cardSize } from '../lib/measure';
 import { newId } from '../lib/id';
 import { BUCKET_COLORS } from '../lib/colors';
 import { cleanItem, MAX_ITEM_LENGTH } from '../lib/parse';
-import type { BoardContent, Bucket, Item, Rect } from './types';
+import type { BoardContent, Bucket, Item, Note, Rect } from './types';
 
 export const DEFAULT_BUCKET_W = 260;
 export const DEFAULT_BUCKET_H = 220;
 export const MIN_BUCKET_W = 160;
 export const MIN_BUCKET_H = 100;
+export const DEFAULT_NOTE_W = 200;
+export const DEFAULT_NOTE_H = 150;
+export const MIN_NOTE_W = 120;
+export const MIN_NOTE_H = 80;
+export const MAX_NOTE_LENGTH = 1000;
 
 export function emptyContent(): BoardContent {
-  return { items: {}, buckets: {}, bucketOrder: [] };
+  return { items: {}, buckets: {}, bucketOrder: [], notes: {} };
 }
 
 /** Map of itemId -> bucketId for grouped items. */
@@ -42,8 +47,16 @@ export function bucketRect(b: Bucket): Rect {
   return { x: b.x, y: b.y, w: b.w, h: b.h };
 }
 
-function bucketRects(content: BoardContent, except?: string): Rect[] {
-  return content.bucketOrder.filter((id) => id !== except).map((id) => bucketRect(content.buckets[id]));
+export function noteRect(n: Note): Rect {
+  return { x: n.x, y: n.y, w: n.w, h: n.h };
+}
+
+/** Buckets and notes: things loose cards and new objects should not be placed under. */
+function fixedRects(content: BoardContent): Rect[] {
+  return [
+    ...content.bucketOrder.map((id) => bucketRect(content.buckets[id])),
+    ...Object.values(content.notes).map(noteRect),
+  ];
 }
 
 function ungroupedRects(content: BoardContent, exclude?: Set<string>): Rect[] {
@@ -53,7 +66,7 @@ function ungroupedRects(content: BoardContent, exclude?: Set<string>): Rect[] {
 }
 
 export function contentBounds(content: BoardContent): Rect | null {
-  return boundsOf([...bucketRects(content), ...ungroupedRects(content)]);
+  return boundsOf([...fixedRects(content), ...ungroupedRects(content)]);
 }
 
 function sanitizeText(text: string): string {
@@ -113,7 +126,7 @@ export function addItems(
   if (ids.length === 0) return { content, ids };
   const bounds = contentBounds(content);
   const origin = near ?? (bounds ? { x: bounds.x, y: bounds.y + bounds.h + 40 } : { x: 0, y: 0 });
-  const obstacles = [...bucketRects(content), ...ungroupedRects(content)];
+  const obstacles = [...fixedRects(content), ...ungroupedRects(content)];
   return { content: placeItems({ ...content, items }, ids, origin, obstacles, rng), ids };
 }
 
@@ -166,7 +179,7 @@ export function returnToBoard(content: BoardContent, id: string): BoardContent {
   const b = content.buckets[bid];
   const [pos] = packCards([cardSize(content.items[id].text)], {
     origin: { x: b.x + b.w + 24, y: b.y },
-    obstacles: [...bucketRects(content), ...ungroupedRects(content)],
+    obstacles: [...fixedRects(content), ...ungroupedRects(content)],
     jitterX: 0,
     jitterY: 0,
     aspect: 0.5,
@@ -191,15 +204,19 @@ export function assignItem(content: BoardContent, id: string, bucketId: string, 
   return { ...content, buckets };
 }
 
-/**
- * Choose a spot for a new bucket: free space inside `visible` (closest to its centre) if there is any,
- * otherwise the first free cell of a grid to the right of the existing content.
- */
+/** Where a new bucket goes: see findFreeSpot. */
 export function findBucketSpot(content: BoardContent, visible: Rect): { x: number; y: number } {
-  const w = DEFAULT_BUCKET_W;
-  const h = DEFAULT_BUCKET_H;
+  return findFreeSpot(content, visible, { w: DEFAULT_BUCKET_W, h: DEFAULT_BUCKET_H });
+}
+
+/**
+ * Choose a spot for a new object of `size`: free space inside `visible` (closest to its centre) if there is
+ * any, otherwise the first free cell of a grid to the right of the existing content.
+ */
+export function findFreeSpot(content: BoardContent, visible: Rect, size: { w: number; h: number }): { x: number; y: number } {
+  const { w, h } = size;
   const gap = 16;
-  const all = [...bucketRects(content), ...ungroupedRects(content)];
+  const all = [...fixedRects(content), ...ungroupedRects(content)];
   const free = (r: Rect, obstacles: Rect[]) => !obstacles.some((o) => rectsOverlap(r, o, gap));
 
   const inset = 16;
@@ -251,7 +268,7 @@ export function createBucket(
   if (!exact) {
     const [pos] = packCards([{ w: DEFAULT_BUCKET_W, h: DEFAULT_BUCKET_H }], {
       origin: at,
-      obstacles: [...bucketRects(content), ...ungroupedRects(content)],
+      obstacles: [...fixedRects(content), ...ungroupedRects(content)],
       gap: 24,
       jitterX: 0,
       jitterY: 0,
@@ -305,7 +322,7 @@ export function deleteBucket(content: BoardContent, id: string, rng?: Rng): Boar
   const buckets = { ...content.buckets };
   delete buckets[id];
   const without: BoardContent = { ...content, buckets, bucketOrder: content.bucketOrder.filter((x) => x !== id) };
-  const obstacles = [...bucketRects(without), ...ungroupedRects(without, new Set(b.itemIds))];
+  const obstacles = [...fixedRects(without), ...ungroupedRects(without, new Set(b.itemIds))];
   return placeItems(without, b.itemIds, { x: b.x, y: b.y }, obstacles, rng);
 }
 
@@ -315,7 +332,7 @@ export function rerandomizeUngrouped(content: BoardContent, rng?: Rng): BoardCon
   if (ids.length === 0) return content;
   const b = boundsOf(ids.map((id) => itemRect(content.items[id])));
   const origin = b ? { x: b.x, y: b.y } : { x: 0, y: 0 };
-  return placeItems(content, ids, origin, bucketRects(content), rng);
+  return placeItems(content, ids, origin, fixedRects(content), rng);
 }
 
 /** Return every item to the board (optionally deleting buckets) and re-scatter them. */
@@ -327,5 +344,55 @@ export function resetGrouping(content: BoardContent, deleteBuckets: boolean, rng
   const ids = Object.keys(content.items);
   const b = contentBounds(content);
   const origin = deleteBuckets || !b ? { x: 0, y: 0 } : { x: b.x, y: b.y };
-  return placeItems(next, ids, origin, bucketRects(next), rng);
+  return placeItems(next, ids, origin, fixedRects(next), rng);
+}
+
+/* ---------- Sticky notes ---------- */
+
+function cleanNoteText(text: string): string {
+  return text.replace(/\r\n?/g, '\n').trim().slice(0, MAX_NOTE_LENGTH);
+}
+
+export function createNote(content: BoardContent, at: { x: number; y: number }, text = ''): { content: BoardContent; id: string } {
+  const id = newId('n');
+  const note: Note = {
+    id,
+    text: cleanNoteText(text),
+    x: Math.round(at.x),
+    y: Math.round(at.y),
+    w: DEFAULT_NOTE_W,
+    h: DEFAULT_NOTE_H,
+  };
+  return { id, content: { ...content, notes: { ...content.notes, [id]: note } } };
+}
+
+function updateNote(content: BoardContent, id: string, patch: Partial<Note>): BoardContent {
+  const n = content.notes[id];
+  if (!n) return content;
+  const next = { ...n, ...patch };
+  if (next.x === n.x && next.y === n.y && next.w === n.w && next.h === n.h && next.text === n.text) return content;
+  return { ...content, notes: { ...content.notes, [id]: next } };
+}
+
+/** Set a note's text. Newlines are kept; only surrounding whitespace is trimmed. */
+export function editNote(content: BoardContent, id: string, text: string): BoardContent {
+  return updateNote(content, id, { text: cleanNoteText(text) });
+}
+
+export function moveNote(content: BoardContent, id: string, x: number, y: number): BoardContent {
+  return updateNote(content, id, { x: Math.round(x), y: Math.round(y) });
+}
+
+export function resizeNote(content: BoardContent, id: string, w: number, h: number): BoardContent {
+  return updateNote(content, id, {
+    w: Math.round(Math.max(MIN_NOTE_W, w)),
+    h: Math.round(Math.max(MIN_NOTE_H, h)),
+  });
+}
+
+export function deleteNote(content: BoardContent, id: string): BoardContent {
+  if (!content.notes[id]) return content;
+  const notes = { ...content.notes };
+  delete notes[id];
+  return { ...content, notes };
 }

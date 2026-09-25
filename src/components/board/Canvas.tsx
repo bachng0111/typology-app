@@ -3,6 +3,7 @@ import { useBoardStore } from '../../store/boardStore';
 import { DEFAULT_BUCKET_W } from '../../store/operations';
 import { BucketView } from './BucketView';
 import { ItemCard } from './ItemCard';
+import { NoteView } from './NoteView';
 import { usePanZoom } from './usePanZoom';
 import { fitToContent, registerGhostEl, registerViewportEl, toBoard } from './viewport';
 
@@ -35,7 +36,7 @@ const DragGhost = memo(function DragGhost() {
 });
 
 function isBackground(target: EventTarget | null): boolean {
-  return target instanceof Element && !target.closest('.card, .bucket');
+  return target instanceof Element && !target.closest('.card, .bucket, .note');
 }
 
 export default function Canvas() {
@@ -43,6 +44,8 @@ export default function Canvas() {
   const items = useBoardStore((s) => s.board!.items);
   const buckets = useBoardStore((s) => s.board!.buckets);
   const bucketOrder = useBoardStore((s) => s.board!.bucketOrder);
+  const notes = useBoardStore((s) => s.board!.notes);
+  const noteIds = useMemo(() => Object.keys(notes), [notes]);
 
   const ungrouped = useMemo(() => {
     const grouped = new Set<string>();
@@ -61,7 +64,7 @@ export default function Canvas() {
     return () => registerViewportEl(null);
   }, []);
 
-  const empty = Object.keys(items).length === 0 && bucketOrder.length === 0;
+  const empty = Object.keys(items).length === 0 && bucketOrder.length === 0 && noteIds.length === 0;
 
   return (
     <div
@@ -85,6 +88,11 @@ export default function Canvas() {
             <ItemCard key={id} id={id} />
           ))}
         </div>
+        <div className="layer-notes">
+          {noteIds.map((id) => (
+            <NoteView key={id} id={id} />
+          ))}
+        </div>
         <DragGhost />
       </World>
       {empty && (
@@ -92,7 +100,7 @@ export default function Canvas() {
           <p>
             <strong>This board is empty.</strong>
           </p>
-          <p className="muted">Use “Add items” to paste or upload a list, or double-click anywhere to create a bucket.</p>
+          <p className="muted">Use “+ Items” to paste or upload a list, “+ Note” to add a comment, or double-click anywhere to create a bucket.</p>
         </div>
       )}
       <span className="sr-only" aria-live="polite">

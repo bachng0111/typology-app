@@ -210,3 +210,69 @@ test('pinch / Ctrl+scroll anywhere zooms the board, never the page', async ({ pa
   await expect.poll(zoomValue).toBeGreaterThan(beforeGesture);
   await expect(page.locator('.toolbar')).toBeInViewport();
 });
+
+test('sticky-note comments: add, edit, move, persist, delete, export', async ({ page }) => {
+  await createBoard(page, 'Notes', 'doctor/nurse/pharmacist/customer service/product quality');
+  await page.getByRole('button', { name: /create board with 5 items/i }).click();
+
+  // The button sits right after "+ Bucket" in the toolbar.
+  const buttons = await page.locator('.toolbar button').allTextContents();
+  expect(buttons[buttons.indexOf('+ Bucket') + 1]).toBe('+ Note');
+
+  await page.getByRole('button', { name: '+ Note' }).click();
+  const editor = page.getByLabel('Comment text');
+  await expect(editor).toBeFocused();
+  await editor.fill('Ask the team\nabout pharmacist');
+  await page.getByTestId('board-viewport').click({ position: { x: 20, y: 20 } });
+  const note = page.locator('.note');
+  await expect(note).toHaveCount(1);
+  await expect(note.locator('.note-text')).toHaveText('Ask the team\nabout pharmacist');
+
+  // Drag it by its body.
+  const before = (await note.boundingBox())!;
+  await page.mouse.move(before.x + 40, before.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(before.x + 140, before.y + 90, { steps: 8 });
+  await page.mouse.up();
+  const after = (await note.boundingBox())!;
+  expect(Math.round(after.x - before.x)).toBe(100);
+  expect(Math.round(after.y - before.y)).toBe(50);
+
+  // Double-click to edit again; Ctrl+Enter finishes.
+  await note.dblclick();
+  await page.getByLabel('Comment text').press('End');
+  await page.keyboard.type('!');
+  await page.keyboard.press('Control+Enter');
+  await expect(note.locator('.note-text')).toHaveText('Ask the team\nabout pharmacist!');
+
+  // Persists across reload.
+  await expect(page.locator('.save-status')).toHaveText(/Saved/);
+  await page.reload();
+  await expect(page.locator('.note .note-text')).toHaveText('Ask the team\nabout pharmacist!');
+
+  // Export text with comments.
+  await page.getByRole('button', { name: 'Export ▾' }).click();
+  await page.getByRole('menuitem', { name: /as text/ }).click();
+  await expect(page.getByLabel('Export preview')).not.toHaveValue(/Comments/);
+  await page.getByLabel('Include comments (sticky notes)').check();
+  await expect(page.getByLabel('Export preview')).toHaveValue(/Comments\n\nAsk the team\nabout pharmacist!$/);
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  // PNG export still works with notes.
+  await page.getByRole('button', { name: 'Export ▾' }).click();
+  const [png] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: /image/i }).click()]);
+  expect(png.suggestedFilename()).toBe('Notes.png');
+
+  // Delete, then undo.
+  await page.locator('.note').hover();
+  await page.getByRole('button', { name: 'Delete comment' }).click();
+  await expect(page.locator('.note')).toHaveCount(0);
+  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('.note .note-text')).toHaveText('Ask the team\nabout pharmacist!');
+
+  // Keyboard shortcut N adds another note.
+  await page.keyboard.press('Escape');
+  await page.getByTestId('board-viewport').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press('n');
+  await expect(page.locator('.note')).toHaveCount(2);
+});

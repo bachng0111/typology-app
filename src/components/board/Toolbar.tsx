@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { canRedo, canUndo, useBoardStore } from '../../store/boardStore';
 import { saveNow } from '../../store/persist';
-import { addBucket, exportBackup, exportPNG, resetGrouping, shuffleUngrouped } from './boardActions';
+import { addBucket, addNote, exportBackup, exportPNG, resetGrouping, shuffleUngrouped } from './boardActions';
 import { fitToContent, zoomAt } from './viewport';
 import type { ExportFormat } from '../ExportDialog';
 
@@ -96,6 +96,9 @@ export default function Toolbar({ onAddItems, onExport, onHelp }: Props) {
       <div className="toolbar-group">
         <button className="btn btn-primary" onClick={addBucket} title="Create a bucket (B)">
           + Bucket
+        </button>
+        <button className="btn btn-note" onClick={addNote} title="Add a sticky-note comment (N)">
+          + Note
         </button>
         <button className="btn" onClick={onAddItems} title="Paste or upload more items">
           + Items

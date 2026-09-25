@@ -1,6 +1,7 @@
-import type { Board, BoardSummary, Bucket, Item } from '../store/types';
+import type { Board, BoardSummary, Bucket, Item, Note } from '../store/types';
 import { newId } from './id';
 import { DEFAULT_DELIMITER, MAX_ITEM_LENGTH, validateDelimiter } from './parse';
+import { DEFAULT_NOTE_H, DEFAULT_NOTE_W, MAX_NOTE_LENGTH, MIN_NOTE_H, MIN_NOTE_W } from '../store/operations';
 
 export const SCHEMA_VERSION = 1;
 const INDEX_KEY = 'clusterly:index';
@@ -73,6 +74,20 @@ export function sanitizeBoard(raw: unknown): Board | null {
     bucketOrder.push(key);
   }
 
+  // Sticky notes (absent in boards saved before notes existed).
+  const notes: Record<string, Note> = {};
+  for (const [key, v] of Object.entries(isObj(raw.notes) ? raw.notes : {})) {
+    if (!isObj(v) || !isNum(v.x) || !isNum(v.y)) continue;
+    notes[key] = {
+      id: key,
+      text: isStr(v.text) ? v.text.slice(0, MAX_NOTE_LENGTH) : '',
+      x: v.x,
+      y: v.y,
+      w: isNum(v.w) ? Math.min(2000, Math.max(MIN_NOTE_W, v.w)) : DEFAULT_NOTE_W,
+      h: isNum(v.h) ? Math.min(2000, Math.max(MIN_NOTE_H, v.h)) : DEFAULT_NOTE_H,
+    };
+  }
+
   const vp = isObj(raw.viewport) ? raw.viewport : {};
   const delimiter = isStr(raw.delimiter) && validateDelimiter(raw.delimiter) === null ? raw.delimiter : DEFAULT_DELIMITER;
   const now = Date.now();
@@ -86,6 +101,7 @@ export function sanitizeBoard(raw: unknown): Board | null {
     items,
     buckets,
     bucketOrder,
+    notes,
     viewport: {
       x: isNum(vp.x) ? vp.x : 0,
       y: isNum(vp.y) ? vp.y : 0,

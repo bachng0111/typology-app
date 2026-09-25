@@ -32,6 +32,8 @@ interface State {
   renamingBucketId: string | null;
   /** Bucket shown above the others (last one moved/resized). */
   raisedBucketId: string | null;
+  /** Note whose text editor is open (a freshly created note starts in edit mode). */
+  editingNoteId: string | null;
   toast: Toast | null;
 }
 
@@ -59,6 +61,12 @@ interface Actions {
   deleteBucket(id: string): void;
   rerandomizeUngrouped(): void;
   resetGrouping(deleteBuckets: boolean): void;
+  createNote(at: { x: number; y: number }): string | null;
+  editNote(id: string, text: string): void;
+  moveNote(id: string, x: number, y: number): void;
+  resizeNote(id: string, w: number, h: number): void;
+  deleteNote(id: string): void;
+  setEditingNote(id: string | null): void;
 
   select(id: string | null): void;
   setDrag(dragging: string | null, hoverBucket: string | null, dropIndex: number | null): void;
@@ -70,10 +78,15 @@ interface Actions {
 
 export type BoardStore = State & Actions;
 
-const contentOf = (b: Board): BoardContent => ({ items: b.items, buckets: b.buckets, bucketOrder: b.bucketOrder });
+const contentOf = (b: Board): BoardContent => ({
+  items: b.items,
+  buckets: b.buckets,
+  bucketOrder: b.bucketOrder,
+  notes: b.notes,
+});
 
 const sameContent = (a: BoardContent, b: BoardContent) =>
-  a.items === b.items && a.buckets === b.buckets && a.bucketOrder === b.bucketOrder;
+  a.items === b.items && a.buckets === b.buckets && a.bucketOrder === b.bucketOrder && a.notes === b.notes;
 
 let toastSeq = 0;
 
@@ -91,6 +104,7 @@ export const useBoardStore = create<BoardStore>()((set, get) => ({
   dropIndex: null,
   renamingBucketId: null,
   raisedBucketId: null,
+  editingNoteId: null,
   toast: null,
 
   openBoard(board) {
@@ -105,6 +119,7 @@ export const useBoardStore = create<BoardStore>()((set, get) => ({
       dropIndex: null,
       renamingBucketId: null,
       raisedBucketId: null,
+      editingNoteId: null,
       toast: null,
       saveStatus: 'saved',
       saveError: null,
@@ -239,6 +254,38 @@ export const useBoardStore = create<BoardStore>()((set, get) => ({
 
   resetGrouping(deleteBuckets) {
     get().commit((c) => ops.resetGrouping(c, deleteBuckets));
+  },
+
+  createNote(at) {
+    let id: string | null = null;
+    get().commit((c) => {
+      const r = ops.createNote(c, at);
+      id = r.id;
+      return r.content;
+    });
+    if (id) set({ editingNoteId: id });
+    return id;
+  },
+
+  editNote(id, text) {
+    get().commit((c) => ops.editNote(c, id, text));
+  },
+
+  moveNote(id, x, y) {
+    get().commit((c) => ops.moveNote(c, id, x, y));
+  },
+
+  resizeNote(id, w, h) {
+    get().commit((c) => ops.resizeNote(c, id, w, h));
+  },
+
+  deleteNote(id) {
+    get().commit((c) => ops.deleteNote(c, id));
+    if (get().editingNoteId === id) set({ editingNoteId: null });
+  },
+
+  setEditingNote(id) {
+    if (get().editingNoteId !== id) set({ editingNoteId: id });
   },
 
   select(id) {

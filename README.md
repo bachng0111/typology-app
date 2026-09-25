@@ -23,12 +23,17 @@ Clusterly turns a list of items into cards on a free-form board, where you sort 
    asks for confirmation and returns the bucket's items to the board.
 6. **Grouping**: drag items into buckets. The target bucket lights up and an insertion marker shows where the
    item will go. Items can be dragged between buckets or back onto the board, or sent back with the ↩ button.
-7. **Editing**: double-click an item to edit it, and delete it with × or the Delete key. Every change can be
+7. **Comments**: **+ Note** (next to **+ Bucket**) or the `N` key adds a yellow sticky note:
+   - Type straight away. Enter starts a new line; Ctrl/⌘+Enter or clicking away finishes.
+   - Double-click a note to edit it again.
+   - Drag a note to move it and use its corner to resize it. Delete it with × (you can undo).
+   - Notes appear in the PNG export. Text and CSV exports include them only if you tick **Include comments**.
+8. **Editing**: double-click an item to edit it, and delete it with × or the Delete key. Every change can be
    undone and redone (Ctrl/⌘+Z, Ctrl/⌘+Shift+Z). **Reset…** returns every item to the board, optionally
    deleting the buckets.
-8. **Save & resume**: every change is saved automatically, and **Saved** in the toolbar saves immediately.
+9. **Save & resume**: every change is saved automatically, and **Saved** in the toolbar saves immediately.
    The home page lists your boards. **Export → Board backup** writes a JSON file you can import in another browser.
-9. **Export**: download a PNG image of the board, or the bucket structure as text or CSV:
+10. **Export**: download a PNG image of the board, or the bucket structure as text or CSV:
 
    ```text
    Healthcare

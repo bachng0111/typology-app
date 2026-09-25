@@ -13,7 +13,7 @@ import {
   wrapText,
 } from './measure';
 import { bucketLabel } from './export';
-import { itemRect, ungroupedIds } from '../store/operations';
+import { itemRect, noteRect, ungroupedIds } from '../store/operations';
 
 /** Chip metrics. Keep in sync with `.chip` / `.bucket` in styles/board.css. */
 export const BUCKET_HEADER_H = 44;
@@ -26,7 +26,7 @@ const CHIP_GAP = 6;
 const PADDING = 48;
 const TITLE_H = 56;
 
-function roundRect(ctx: CanvasRenderingContext2D, r: Rect, radius: number) {
+function roundRect(ctx: CanvasRenderingContext2D, r: Rect, radius: number | number[]) {
   ctx.beginPath();
   ctx.roundRect(r.x, r.y, r.w, r.h, radius);
 }
@@ -80,7 +80,14 @@ export async function renderBoardPNG(board: Board): Promise<Blob> {
     return { b, rect: { x: b.x, y: b.y, w: b.w, h }, chips, label: bucketLabel(b.name, i) };
   });
   const loose = ungroupedIds(board).map((id) => board.items[id]);
-  const bounds = boundsOf([...bucketDraws.map((d) => d.rect), ...loose.map(itemRect)]) ?? { x: 0, y: 0, w: 400, h: 200 };
+  // Empty notes are placeholders on the board; leave them out of the image.
+  const notes = Object.values(board.notes ?? {}).filter((n) => n.text.trim());
+  const bounds = boundsOf([...bucketDraws.map((d) => d.rect), ...loose.map(itemRect), ...notes.map(noteRect)]) ?? {
+    x: 0,
+    y: 0,
+    w: 400,
+    h: 200,
+  };
 
   const width = bounds.w + PADDING * 2;
   const height = bounds.h + PADDING * 2 + TITLE_H;
@@ -168,6 +175,35 @@ export async function renderBoardPNG(board: Board): Promise<Blob> {
     wrapText(item.text, inner, (t) => ctx.measureText(t).width).forEach((line, li) =>
       ctx.fillText(line, r.x + CARD_PAD_X + CARD_BORDER, r.y + CARD_PAD_Y + CARD_BORDER + CARD_LINE_HEIGHT * li + CARD_LINE_HEIGHT / 2),
     );
+  }
+
+  // Sticky notes sit on top, as on the board.
+  for (const n of notes) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(113,63,18,0.22)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    roundRect(ctx, { x: n.x, y: n.y, w: n.w, h: n.h }, [2, 2, 14, 2]);
+    ctx.fillStyle = '#fef08a';
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    roundRect(ctx, { x: n.x, y: n.y, w: n.w, h: n.h }, [2, 2, 14, 2]);
+    ctx.clip();
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(n.x, n.y, n.w, 14);
+    ctx.font = `400 15px ${FONT_FAMILY}`;
+    ctx.fillStyle = '#422006';
+    const measure = (t: string) => ctx.measureText(t).width;
+    const lines = n.text
+      .split('\n')
+      .flatMap((para) => wrapText(para.replace(/\s+/g, ' ').trim(), n.w - 24, measure));
+    const lineH = 21;
+    lines.forEach((line, i) => {
+      const y = n.y + 14 + 8 + lineH * i + lineH / 2;
+      if (y < n.y + n.h - 8) ctx.fillText(line, n.x + 12, y);
+    });
+    ctx.restore();
   }
 
   return new Promise((resolve, reject) =>

@@ -1,5 +1,13 @@
 import { useBoardStore } from '../../store/boardStore';
-import { DEFAULT_BUCKET_H, DEFAULT_BUCKET_W, findBucketSpot, ungroupedIds } from '../../store/operations';
+import {
+  DEFAULT_BUCKET_H,
+  DEFAULT_BUCKET_W,
+  DEFAULT_NOTE_H,
+  DEFAULT_NOTE_W,
+  findBucketSpot,
+  findFreeSpot,
+  ungroupedIds,
+} from '../../store/operations';
 import { boundsOf } from '../../lib/layout';
 import { confirmAction } from '../ConfirmDialog';
 import { renderBoardPNG } from '../../lib/exportImage';
@@ -19,6 +27,20 @@ export function addBucket() {
   const inView =
     b.x >= visible.x && b.y >= visible.y && b.x + b.w <= visible.x + visible.w && b.y + b.h <= visible.y + visible.h;
   if (!inView) fitRect(boundsOf([visible, b])!, currentViewport().zoom);
+}
+
+/** Add a sticky-note comment in free space and open it for typing. */
+export function addNote() {
+  const s = useBoardStore.getState();
+  if (!s.board) return;
+  const visible = visibleRect();
+  const size = { w: DEFAULT_NOTE_W, h: DEFAULT_NOTE_H };
+  const spot = findFreeSpot(s.board, visible, size);
+  s.createNote(spot);
+  const n = { ...spot, ...size };
+  const inView =
+    n.x >= visible.x && n.y >= visible.y && n.x + n.w <= visible.x + visible.w && n.y + n.h <= visible.y + visible.h;
+  if (!inView) fitRect(boundsOf([visible, n])!, currentViewport().zoom);
 }
 
 export function shuffleUngrouped() {

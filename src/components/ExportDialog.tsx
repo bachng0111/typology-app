@@ -15,6 +15,8 @@ export default function ExportDialog({ format, onClose }: Props) {
   const board = useBoardStore((s) => s.board);
   const [tab, setTab] = useState<ExportFormat>('text');
   const [includeUngrouped, setIncludeUngrouped] = useState(true);
+  const [includeComments, setIncludeComments] = useState(false);
+  const hasComments = useBoardStore((s) => Object.values(s.board?.notes ?? {}).some((n) => n.text.trim()));
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -29,8 +31,9 @@ export default function ExportDialog({ format, onClose }: Props) {
 
   const output = useMemo(() => {
     if (!board || !format) return '';
-    return tab === 'csv' ? toCSV(board, includeUngrouped) : toText(board, includeUngrouped);
-  }, [board, tab, includeUngrouped, format]);
+    const opts = { includeUngrouped, includeComments };
+    return tab === 'csv' ? toCSV(board, opts) : toText(board, opts);
+  }, [board, tab, includeUngrouped, includeComments, format]);
 
   const copy = async () => {
     try {
@@ -70,6 +73,12 @@ export default function ExportDialog({ format, onClose }: Props) {
           <input type="checkbox" checked={includeUngrouped} onChange={(e) => setIncludeUngrouped(e.target.checked)} />
           Include ungrouped items
         </label>
+        {hasComments && (
+          <label className="checkbox checkbox-spaced">
+            <input type="checkbox" checked={includeComments} onChange={(e) => setIncludeComments(e.target.checked)} />
+            Include comments (sticky notes)
+          </label>
+        )}
         <textarea className="textarea export-preview" readOnly value={output} aria-label="Export preview" rows={14} />
         <div className="dialog-actions">
           <button className="btn" onClick={onClose}>

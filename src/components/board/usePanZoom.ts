@@ -8,7 +8,7 @@ function isTyping(target: EventTarget | null) {
 
 /** Can this element scroll further in the wheel direction? Then let it scroll natively. */
 function canScroll(target: EventTarget | null, dy: number): boolean {
-  const body = target instanceof Element ? target.closest<HTMLElement>('.bucket-body') : null;
+  const body = target instanceof Element ? target.closest<HTMLElement>('.bucket-body, .note-body, .note-editor') : null;
   if (!body || body.scrollHeight <= body.clientHeight) return false;
   return dy < 0 ? body.scrollTop > 0 : body.scrollTop + body.clientHeight < body.scrollHeight - 1;
 }

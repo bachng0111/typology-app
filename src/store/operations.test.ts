@@ -118,3 +118,40 @@ describe('board operations', () => {
     expect(c.buckets[bk.id]).toMatchObject({ w: ops.MIN_BUCKET_W, h: ops.MIN_BUCKET_H });
   });
 });
+
+describe('sticky notes', () => {
+  it('creates, edits, moves, resizes and deletes notes', () => {
+    const { content, id } = ops.createNote(ops.emptyContent(), { x: 10.4, y: 20.6 });
+    expect(content.notes[id]).toMatchObject({ text: '', x: 10, y: 21, w: ops.DEFAULT_NOTE_W, h: ops.DEFAULT_NOTE_H });
+
+    let c = ops.editNote(content, id, '  first line\n  second line  ');
+    expect(c.notes[id].text).toBe('first line\n  second line');
+    expect(ops.editNote(c, id, c.notes[id].text)).toBe(c);
+    expect(ops.editNote(c, id, 'x'.repeat(ops.MAX_NOTE_LENGTH + 10)).notes[id].text).toHaveLength(ops.MAX_NOTE_LENGTH);
+
+    c = ops.moveNote(c, id, 300, 400);
+    expect(c.notes[id]).toMatchObject({ x: 300, y: 400 });
+    c = ops.resizeNote(c, id, 10, 10);
+    expect(c.notes[id]).toMatchObject({ w: ops.MIN_NOTE_W, h: ops.MIN_NOTE_H });
+
+    c = ops.deleteNote(c, id);
+    expect(c.notes[id]).toBeUndefined();
+    expect(ops.deleteNote(c, id)).toBe(c);
+  });
+
+  it('notes survive reset grouping and count toward content bounds', () => {
+    const n = ops.createNote(ops.createContent(texts), { x: 5000, y: 5000 });
+    const reset = ops.resetGrouping(n.content, true);
+    expect(reset.notes[n.id]).toBeDefined();
+    const b = ops.contentBounds(n.content)!;
+    expect(b.x + b.w).toBeGreaterThanOrEqual(5000 + ops.DEFAULT_NOTE_W);
+  });
+
+  it('new objects are placed away from notes', () => {
+    const visible = { x: 0, y: 0, w: 800, h: 600 };
+    const n = ops.createNote(ops.emptyContent(), { x: 300, y: 225 });
+    const spot = ops.findBucketSpot(n.content, visible);
+    const rect = { ...spot, w: ops.DEFAULT_BUCKET_W, h: ops.DEFAULT_BUCKET_H };
+    expect(rectsOverlap(rect, ops.noteRect(n.content.notes[n.id]))).toBe(false);
+  });
+});

@@ -60,6 +60,23 @@ describe('board store undo/redo', () => {
     expect(s().board!.buckets[bid].itemIds).toEqual(ids);
   });
 
+  it('undoes and redoes note changes', () => {
+    const id = s().createNote({ x: 0, y: 0 })!;
+    expect(s().editingNoteId).toBe(id);
+    s().editNote(id, 'hello');
+    expect(s().board!.notes[id].text).toBe('hello');
+    s().undo();
+    expect(s().board!.notes[id].text).toBe('');
+    s().undo();
+    expect(s().board!.notes[id]).toBeUndefined();
+    s().redo();
+    s().redo();
+    expect(s().board!.notes[id].text).toBe('hello');
+    s().deleteNote(id);
+    s().undo();
+    expect(s().board!.notes[id].text).toBe('hello');
+  });
+
   it('caps history length', () => {
     const [a] = Object.keys(s().board!.items);
     for (let i = 0; i < HISTORY_LIMIT + 20; i++) s().placeItemOnBoard(a, i * 3, 0);

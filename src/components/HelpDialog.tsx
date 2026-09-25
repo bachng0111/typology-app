@@ -8,6 +8,8 @@ const SHORTCUTS: [string, string][] = [
   ['Drag empty space / Space + drag', 'Pan the board'],
   ['Scroll / Ctrl or ⌘ + scroll', 'Pan / zoom'],
   ['B', 'New bucket'],
+  ['N', 'New sticky-note comment'],
+  ['Double-click a note', 'Edit it (Enter = new line, Ctrl/⌘+Enter or click away to finish)'],
   ['F', 'Fit everything in view'],
   ['+ / −', 'Zoom in / out'],
   ['Delete / Backspace', 'Delete the selected item'],
