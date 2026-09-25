@@ -1,0 +1,92 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px 64px;
+}
+.page-narrow {
+  max-width: 760px;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  margin-bottom: 8px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.hero {
+  text-align: center;
+  padding: 48px 0;
+}
+.hero h1 {
+  font-size: 2.2rem;
+}
+.lead {
+  font-size: 1.1rem;
+  color: var(--muted);
+  max-width: 560px;
+  margin: 0.75rem auto;
+}
+
+.board-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0;
+  display: grid;
+  gap: 10px;
+}
+.board-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.board-card:hover {
+  border-color: var(--border-strong);
+}
+.board-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+.board-name {
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-link:hover .board-name {
+  color: var(--primary);
+}
+.board-actions {
+  display: flex;
+  gap: 6px;
+}
+.board-rename {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .board-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
