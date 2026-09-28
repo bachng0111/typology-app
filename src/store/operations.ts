@@ -2,7 +2,7 @@
  * Pure board operations. Each takes the current content and returns a new object,
  * sharing untouched structure so undo snapshots stay cheap.
  */
-import { boundsOf, packCards, rectsOverlap, shuffle, type Rng } from '../lib/layout';
+import { boundsOf, packCards, rectsOverlap, shuffle, surroundRect, type Rng } from '../lib/layout';
 import { cardSize } from '../lib/measure';
 import { newId } from '../lib/id';
 import { bucketSizeFor } from '../lib/chipLayout';
@@ -406,33 +406,30 @@ export interface ImportSpec {
 }
 
 /**
- * Build a board from pre-grouped items: loose items are scattered on the left and each
- * bucket is sized to fit its items, laid out in rows to the right.
+ * Build a board from pre-grouped items: buckets (each sized to fit its items) form a block
+ * at the centre, and the loose items are spread all around it.
  */
 export function createImportedContent(spec: ImportSpec, rng?: Rng): BoardContent {
-  const loose = createContent(spec.ungrouped, rng);
-  const items = { ...loose.items };
-  const looseBounds = boundsOf(Object.values(loose.items).map(itemRect));
+  if (spec.buckets.length === 0) return createContent(spec.ungrouped, rng);
 
-  // Size every bucket first, then shelf-pack them in column order.
+  // 1. Shelf-pack the buckets, in column order, into a roughly 16:10 block at the origin.
   const specs = spec.buckets.map((b) => {
     const texts = b.items.map(sanitizeText).filter(Boolean);
     return { name: b.name, texts, size: bucketSizeFor(texts) };
   });
   const gap = 32;
   const area = specs.reduce((sum, s) => sum + (s.size.w + gap) * (s.size.h + gap), 0);
-  const maxW = Math.max(0, ...specs.map((s) => s.size.w));
+  const maxW = Math.max(...specs.map((s) => s.size.w));
   const rowWidth = Math.max(maxW, Math.sqrt(area * 1.6));
-  const originX = looseBounds ? looseBounds.x + looseBounds.w + 96 : 0;
-  const originY = looseBounds ? looseBounds.y : 0;
 
-  let content: BoardContent = { ...loose, items };
-  let x = originX;
-  let y = originY;
+  const items: Record<string, Item> = {};
+  let content: BoardContent = { ...emptyContent(), items };
+  let x = 0;
+  let y = 0;
   let rowH = 0;
   for (const s of specs) {
-    if (x > originX && x + s.size.w > originX + rowWidth) {
-      x = originX;
+    if (x > 0 && x + s.size.w > rowWidth) {
+      x = 0;
       y += rowH + gap;
       rowH = 0;
     }
@@ -453,9 +450,18 @@ export function createImportedContent(spec: ImportSpec, rng?: Rng): BoardContent
       colorIndex: nextColorIndex(content),
       itemIds,
     };
-    content = { ...content, items, buckets: { ...content.buckets, [id]: bucket }, bucketOrder: [...content.bucketOrder, id] };
+    content = { ...content, buckets: { ...content.buckets, [id]: bucket }, bucketOrder: [...content.bucketOrder, id] };
     x += s.size.w + gap;
     rowH = Math.max(rowH, s.size.h);
   }
+
+  // 2. Surround the bucket block with the loose items, in random order.
+  const loose = shuffle(spec.ungrouped.map(sanitizeText).filter(Boolean), rng);
+  const core = boundsOf(fixedRects(content))!;
+  const positions = surroundRect(loose.map(cardSize), core, { rng, obstacles: fixedRects(content) });
+  loose.forEach((text, i) => {
+    const id = newId('i');
+    items[id] = { id, text, x: Math.round(positions[i].x), y: Math.round(positions[i].y) };
+  });
   return content;
 }

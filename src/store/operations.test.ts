@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as ops from './operations';
-import { rectsOverlap } from '../lib/layout';
+import { boundsOf, rectsOverlap } from '../lib/layout';
 
 const texts = ['doctor', 'nurse', 'pharmacist', 'customer service', 'product quality'];
 
@@ -181,6 +181,32 @@ describe('createImportedContent', () => {
     expect(big.w * big.h).toBeGreaterThan(small.w * small.h);
     expect(small.h).toBeLessThan(ops.DEFAULT_BUCKET_H);
     expect(empty).toMatchObject({ w: ops.DEFAULT_BUCKET_W, h: ops.DEFAULT_BUCKET_H });
+  });
+
+  it('puts the buckets in the centre with loose items all around them', () => {
+    const c = ops.createImportedContent({
+      buckets: spec.buckets,
+      ungrouped: Array.from({ length: 24 }, (_, i) => `loose item ${i}`),
+    });
+    const block = boundsOf(c.bucketOrder.map((id) => ops.bucketRect(c.buckets[id])))!;
+    const loose = ops.ungroupedIds(c).map((id) => ops.itemRect(c.items[id]));
+    const above = loose.filter((r) => r.y + r.h <= block.y).length;
+    const below = loose.filter((r) => r.y >= block.y + block.h).length;
+    const left = loose.filter((r) => r.x + r.w <= block.x).length;
+    const right = loose.filter((r) => r.x >= block.x + block.w).length;
+    for (const n of [above, below, left, right]) expect(n).toBeGreaterThan(0);
+
+    // The bucket block sits in the middle of everything.
+    const all = ops.contentBounds(c)!;
+    const centre = (r: { x: number; y: number; w: number; h: number }) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+    expect(Math.abs(centre(all).x - centre(block).x)).toBeLessThan(all.w * 0.15);
+    expect(Math.abs(centre(all).y - centre(block).y)).toBeLessThan(all.h * 0.15);
+  });
+
+  it('falls back to a plain scatter when there are no buckets', () => {
+    const c = ops.createImportedContent({ buckets: [], ungrouped: ['a', 'b', 'c'] });
+    expect(c.bucketOrder).toEqual([]);
+    expect(ops.ungroupedIds(c)).toHaveLength(3);
   });
 
   it('lays out buckets and loose items without overlaps', () => {

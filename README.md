@@ -11,7 +11,7 @@ Clusterly turns a list of items into cards on a free-form board, where you sort 
 
 1. **Create a board**: give it a name, then paste text, upload a plain-text file, import a CSV, or start empty.
    - **Import CSV**: each column header becomes a bucket and the cells below it become its items.
-     - A column named `Ungrouped` (any case) puts its items on the board outside any bucket.
+     - A column named `Ungrouped` (any case) puts its items on the board outside any bucket. The buckets sit at the centre of the board and the ungrouped items are spread around them.
      - Columns with the same name are merged, and each bucket is sized to fit its items.
      - Comma-, semicolon- and tab-separated files all work, as do cells pasted straight from a spreadsheet.
      - The app's own CSV export (`bucket,item` rows) can be imported back the same way.

@@ -147,3 +147,62 @@ export function boundsOf(rects: Rect[]): Rect | null {
   }
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
+
+/**
+ * Place cards all around `core` (e.g. a block of buckets): cards are spread evenly along the
+ * perimeter, and each moves outward from the centre until it finds free space.
+ * Returns top-left positions in the same order as `sizes`.
+ */
+export function surroundRect(
+  sizes: Size[],
+  core: Rect,
+  opts: { gap?: number; margin?: number; obstacles?: Rect[]; rng?: Rng } = {},
+): { x: number; y: number }[] {
+  const { gap = 14, margin = 48, obstacles = [], rng = Math.random } = opts;
+  const n = sizes.length;
+  if (n === 0) return [];
+  const index = new SpatialIndex();
+  index.add(core);
+  for (const o of obstacles) index.add(o);
+
+  const cx = core.x + core.w / 2;
+  const cy = core.y + core.h / 2;
+  // Perimeter of the core inflated by the margin; cards are aimed at evenly spaced points on it.
+  const hw = core.w / 2 + margin;
+  const hh = core.h / 2 + margin;
+  const perimeter = 4 * (hw + hh);
+  const offset = rng() * perimeter;
+  const pointAt = (s: number) => {
+    let d = ((s % perimeter) + perimeter) % perimeter;
+    if (d < 2 * hw) return { x: cx - hw + d, y: cy - hh };
+    d -= 2 * hw;
+    if (d < 2 * hh) return { x: cx + hw, y: cy - hh + d };
+    d -= 2 * hh;
+    if (d < 2 * hw) return { x: cx + hw - d, y: cy + hh };
+    d -= 2 * hw;
+    return { x: cx - hw, y: cy + hh - d };
+  };
+
+  const step = perimeter / n;
+  return sizes.map((size, i) => {
+    const target = pointAt(offset + i * step + (rng() - 0.5) * step * 0.6);
+    let dx = target.x - cx;
+    let dy = target.y - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+    // First distance along the ray at which the card clears the core (plus margin).
+    const ax = core.w / 2 + margin + size.w / 2;
+    const ay = core.h / 2 + margin + size.h / 2;
+    let t = Math.min(Math.abs(dx) > 1e-6 ? ax / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? ay / Math.abs(dy) : Infinity);
+    for (let guard = 0; guard < 100_000; guard++) {
+      const rect = { x: cx + dx * t - size.w / 2, y: cy + dy * t - size.h / 2, w: size.w, h: size.h };
+      if (!index.hit(rect, gap)) {
+        index.add(rect);
+        return { x: rect.x, y: rect.y };
+      }
+      t += 10;
+    }
+    throw new Error('surroundRect: layout did not converge');
+  });
+}
