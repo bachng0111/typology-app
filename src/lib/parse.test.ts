@@ -33,7 +33,7 @@ describe('parseItems', () => {
   });
 
   it('strips a byte order mark', () => {
-    expect(parseItems('﻿a/b').items).toEqual(['a', 'b']);
+    expect(parseItems('\uFEFFa/b').items).toEqual(['a', 'b']);
   });
 
   it('handles empty and malformed input gracefully', () => {

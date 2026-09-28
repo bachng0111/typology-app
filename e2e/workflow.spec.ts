@@ -276,3 +276,53 @@ test('sticky-note comments: add, edit, move, persist, delete, export', async ({ 
   await page.keyboard.press('n');
   await expect(page.locator('.note')).toHaveCount(2);
 });
+
+test('import CSV: columns become buckets, Ungrouped stays on the board', async ({ page }) => {
+  await page.goto('/#/new');
+  await page.getByRole('tab', { name: 'Import CSV' }).click();
+  const create = page.getByRole('button', { name: /create board/i });
+  await expect(create).toBeDisabled();
+
+  // Malformed input: an empty header row.
+  await page.getByLabel('CSV contents').fill(',,\nx,y');
+  await expect(page.getByText(/first row should contain bucket names/)).toBeVisible();
+  await expect(create).toBeDisabled();
+
+  const big = Array.from({ length: 20 }, (_, i) => `occupation ${i + 1}`);
+  const csv = [
+    'Healthcare,Fruit,Ungrouped,Jobs',
+    ...big.map((job, i) => {
+      const row = [['doctor', 'nurse', 'pharmacist'][i] ?? '', ['apple', 'orange'][i] ?? '', ['rock', 'chair'][i] ?? '', job];
+      return row.join(',');
+    }),
+  ].join('\n');
+  await page.getByTestId('csv-file-input').setInputFiles({ name: 'My sort.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.getByText('Loaded “My sort.csv”')).toBeVisible();
+  const preview = page.locator('.csv-preview');
+  await expect(preview).toContainText('Healthcare');
+  await expect(preview).toContainText('3 items');
+  await expect(preview).toContainText('2 items (placed on the board)');
+  await expect(create).toHaveText(/3 buckets and 27 items/);
+  await create.click();
+
+  // Board is named after the file.
+  await expect(page.getByLabel('Board name')).toHaveValue('My sort');
+  const health = page.locator('.bucket', { hasText: 'Healthcare' });
+  const fruit = page.locator('.bucket', { hasText: 'Fruit' });
+  const jobs = page.locator('.bucket', { hasText: 'Jobs' });
+  await expect(health.locator('.chip')).toHaveCount(3);
+  await expect(fruit.locator('.chip')).toHaveCount(2);
+  await expect(jobs.locator('.chip')).toHaveCount(20);
+  await expect(page.locator('.layer-cards .card')).toHaveCount(2);
+
+  // Bigger columns give bigger buckets, and every chip fits without scrolling.
+  const size = async (l: typeof health) => {
+    const b = (await l.boundingBox())!;
+    return b.width * b.height;
+  };
+  expect(await size(jobs)).toBeGreaterThan(await size(health));
+  for (const b of [health, fruit, jobs]) {
+    const overflow = await b.locator('.bucket-body').evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+});

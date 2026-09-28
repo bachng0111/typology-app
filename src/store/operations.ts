@@ -5,6 +5,7 @@
 import { boundsOf, packCards, rectsOverlap, shuffle, type Rng } from '../lib/layout';
 import { cardSize } from '../lib/measure';
 import { newId } from '../lib/id';
+import { bucketSizeFor } from '../lib/chipLayout';
 import { BUCKET_COLORS } from '../lib/colors';
 import { cleanItem, MAX_ITEM_LENGTH } from '../lib/parse';
 import type { BoardContent, Bucket, Item, Note, Rect } from './types';
@@ -395,4 +396,66 @@ export function deleteNote(content: BoardContent, id: string): BoardContent {
   const notes = { ...content.notes };
   delete notes[id];
   return { ...content, notes };
+}
+
+/* ---------- CSV import ---------- */
+
+export interface ImportSpec {
+  buckets: { name: string; items: string[] }[];
+  ungrouped: string[];
+}
+
+/**
+ * Build a board from pre-grouped items: loose items are scattered on the left and each
+ * bucket is sized to fit its items, laid out in rows to the right.
+ */
+export function createImportedContent(spec: ImportSpec, rng?: Rng): BoardContent {
+  const loose = createContent(spec.ungrouped, rng);
+  const items = { ...loose.items };
+  const looseBounds = boundsOf(Object.values(loose.items).map(itemRect));
+
+  // Size every bucket first, then shelf-pack them in column order.
+  const specs = spec.buckets.map((b) => {
+    const texts = b.items.map(sanitizeText).filter(Boolean);
+    return { name: b.name, texts, size: bucketSizeFor(texts) };
+  });
+  const gap = 32;
+  const area = specs.reduce((sum, s) => sum + (s.size.w + gap) * (s.size.h + gap), 0);
+  const maxW = Math.max(0, ...specs.map((s) => s.size.w));
+  const rowWidth = Math.max(maxW, Math.sqrt(area * 1.6));
+  const originX = looseBounds ? looseBounds.x + looseBounds.w + 96 : 0;
+  const originY = looseBounds ? looseBounds.y : 0;
+
+  let content: BoardContent = { ...loose, items };
+  let x = originX;
+  let y = originY;
+  let rowH = 0;
+  for (const s of specs) {
+    if (x > originX && x + s.size.w > originX + rowWidth) {
+      x = originX;
+      y += rowH + gap;
+      rowH = 0;
+    }
+    const itemIds: string[] = [];
+    for (const text of s.texts) {
+      const id = newId('i');
+      items[id] = { id, text, x: 0, y: 0 };
+      itemIds.push(id);
+    }
+    const id = newId('b');
+    const bucket: Bucket = {
+      id,
+      name: s.name.replace(/\s+/g, ' ').trim().slice(0, 80),
+      x,
+      y,
+      w: s.size.w,
+      h: s.size.h,
+      colorIndex: nextColorIndex(content),
+      itemIds,
+    };
+    content = { ...content, items, buckets: { ...content.buckets, [id]: bucket }, bucketOrder: [...content.bucketOrder, id] };
+    x += s.size.w + gap;
+    rowH = Math.max(rowH, s.size.h);
+  }
+  return content;
 }

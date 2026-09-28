@@ -13,16 +13,9 @@ import {
   wrapText,
 } from './measure';
 import { bucketLabel } from './export';
+import { BUCKET_HEADER_H, BUCKET_PAD, CHIP_FONT, CHIP_LINE, CHIP_PAD_X, CHIP_PAD_Y, layoutChips } from './chipLayout';
 import { itemRect, noteRect, ungroupedIds } from '../store/operations';
 
-/** Chip metrics. Keep in sync with `.chip` / `.bucket` in styles/board.css. */
-export const BUCKET_HEADER_H = 44;
-export const BUCKET_PAD = 10;
-const CHIP_FONT = `500 13px ${FONT_FAMILY}`;
-const CHIP_LINE = 18;
-const CHIP_PAD_X = 10;
-const CHIP_PAD_Y = 5;
-const CHIP_GAP = 6;
 const PADDING = 48;
 const TITLE_H = 56;
 
@@ -31,50 +24,21 @@ function roundRect(ctx: CanvasRenderingContext2D, r: Rect, radius: number | numb
   ctx.roundRect(r.x, r.y, r.w, r.h, radius);
 }
 
-interface ChipLayout {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  lines: string[];
-}
-
-function layoutChips(ctx: CanvasRenderingContext2D, texts: string[], innerW: number): { chips: ChipLayout[]; height: number } {
-  ctx.font = CHIP_FONT;
-  const measure = (s: string) => ctx.measureText(s).width;
-  const chips: ChipLayout[] = [];
-  let x = 0;
-  let y = 0;
-  let rowH = 0;
-  for (const text of texts) {
-    const lines = wrapText(text, innerW - 2 * CHIP_PAD_X - 4, measure);
-    const w = Math.min(innerW, Math.ceil(Math.max(...lines.map(measure))) + 2 * CHIP_PAD_X + 4);
-    const h = lines.length * CHIP_LINE + 2 * CHIP_PAD_Y;
-    if (x > 0 && x + w > innerW) {
-      x = 0;
-      y += rowH + CHIP_GAP;
-      rowH = 0;
-    }
-    chips.push({ x, y, w, h, lines });
-    x += w + CHIP_GAP;
-    rowH = Math.max(rowH, h);
-  }
-  return { chips, height: y + rowH };
-}
-
 /** Render the board to a PNG blob by drawing directly from state. */
 export async function renderBoardPNG(board: Board): Promise<Blob> {
   const measureCanvas = document.createElement('canvas').getContext('2d');
   if (!measureCanvas) throw new Error('Canvas is not supported in this browser.');
+  measureCanvas.font = CHIP_FONT;
+  const measureChip = (t: string) => measureCanvas.measureText(t).width;
 
   // Pre-compute bucket layouts; buckets grow to show every item in the image.
   const bucketDraws = board.bucketOrder.map((bid, i) => {
     const b = board.buckets[bid];
     const innerW = b.w - 2 * BUCKET_PAD;
     const { chips, height } = layoutChips(
-      measureCanvas,
       b.itemIds.map((id) => board.items[id]?.text ?? ''),
       innerW,
+      measureChip,
     );
     const h = Math.max(b.h, BUCKET_HEADER_H + BUCKET_PAD * 2 + height);
     return { b, rect: { x: b.x, y: b.y, w: b.w, h }, chips, label: bucketLabel(b.name, i) };

@@ -9,7 +9,19 @@ Clusterly turns a list of items into cards on a free-form board, where you sort 
 
 **Add text → Review items → Randomize → Create buckets → Drag items → Name buckets → Export**
 
-1. **Create a board**: give it a name, then paste text, upload a plain-text file, or start empty.
+1. **Create a board**: give it a name, then paste text, upload a plain-text file, import a CSV, or start empty.
+   - **Import CSV**: each column header becomes a bucket and the cells below it become its items.
+     - A column named `Ungrouped` (any case) puts its items on the board outside any bucket.
+     - Columns with the same name are merged, and each bucket is sized to fit its items.
+     - Comma-, semicolon- and tab-separated files all work, as do cells pasted straight from a spreadsheet.
+     - The app's own CSV export (`bucket,item` rows) can be imported back the same way.
+
+     ```csv
+     Healthcare,Fruit,Ungrouped
+     doctor,apple,rock
+     nurse,orange,chair
+     pharmacist,,
+     ```
 2. **Parse**: the text is split on the delimiter (default `/`; presets `,` `;` `|` or new line, or a custom
    string of up to 5 characters). Each item is trimmed and empty items are ignored, so
    `doctor/nurse/pharmacist/customer service/product quality` becomes five items.
@@ -68,6 +80,8 @@ npm run lint
 | `src/lib/layout.ts` | Random, non-overlapping card placement |
 | `src/lib/storage.ts` | `localStorage` persistence, validation and repair of saved/imported boards |
 | `src/lib/export.ts`, `exportImage.ts` | Text/CSV export and PNG rendering |
+| `src/lib/csv.ts`, `csvImport.ts` | CSV parsing and turning columns into buckets for import |
+| `src/lib/chipLayout.ts` | Chip layout inside buckets (sizing imported buckets, PNG export) |
 | `src/store/operations.ts` | Pure board operations (group, move, delete bucket, …) |
 | `src/store/boardStore.ts` | Zustand store with undo/redo history |
 | `src/store/persist.ts` | Debounced autosave, flushed when the page is hidden or closed |

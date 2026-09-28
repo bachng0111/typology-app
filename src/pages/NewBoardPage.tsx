@@ -4,23 +4,23 @@ import { navigate } from '../router';
 import { DEFAULT_DELIMITER } from '../lib/parse';
 import { newId } from '../lib/id';
 import { saveBoard, SCHEMA_VERSION, StorageError } from '../lib/storage';
-import { createContent } from '../store/operations';
-import type { Board } from '../store/types';
+import { createContent, createImportedContent, type ImportSpec } from '../store/operations';
+import type { Board, BoardContent } from '../store/types';
 
 export default function NewBoardPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const create = (texts: string[], delimiter: string) => {
+  const save = (content: BoardContent, delimiter: string, fallbackName = 'Untitled board') => {
     const now = Date.now();
     const board: Board = {
       version: SCHEMA_VERSION,
       id: newId('board_'),
-      name: name.replace(/\s+/g, ' ').trim() || 'Untitled board',
+      name: name.replace(/\s+/g, ' ').trim() || fallbackName,
       delimiter,
       createdAt: now,
       updatedAt: now,
-      ...createContent(texts),
+      ...content,
       viewport: { x: 0, y: 0, zoom: 1 },
     };
     try {
@@ -30,6 +30,11 @@ export default function NewBoardPage() {
       setError(err instanceof StorageError ? err.message : 'Could not create the board.');
     }
   };
+
+  const create = (texts: string[], delimiter: string) => save(createContent(texts), delimiter);
+
+  const importCsv = (spec: ImportSpec, fileName: string | null) =>
+    save(createImportedContent(spec), DEFAULT_DELIMITER, fileName?.replace(/\.[^.]+$/, '').trim() || 'Imported board');
 
   return (
     <div className="page page-narrow">
@@ -44,6 +49,8 @@ export default function NewBoardPage() {
         <ItemsWizard
           initialDelimiter={DEFAULT_DELIMITER}
           allowEmpty
+          allowCsvImport
+          onImportCsv={importCsv}
           header={
             <label className="field">
               <span className="field-label">Board name</span>

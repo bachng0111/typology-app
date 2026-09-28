@@ -2,6 +2,8 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import DelimiterPicker from './DelimiterPicker';
 import ItemReview, { draftKey, type DraftItem } from './ItemReview';
 import { confirmAction } from './ConfirmDialog';
+import CsvImportPanel, { parseCsvSafely } from './CsvImportPanel';
+import type { BucketImport } from '../lib/csvImport';
 import { ACCEPTED_FILE_TYPES, FileInputError, readTextFile } from '../lib/fileInput';
 import {
   cleanItem,
@@ -13,12 +15,15 @@ import {
   validateDelimiter,
 } from '../lib/parse';
 
-type Source = 'paste' | 'upload' | 'empty';
+type Source = 'paste' | 'upload' | 'empty' | 'csv';
 
 interface Props {
   initialDelimiter: string;
   /** Offer the "Start empty" option (new boards only). */
   allowEmpty?: boolean;
+  /** Offer "Import CSV": columns become buckets (new boards only). */
+  allowCsvImport?: boolean;
+  onImportCsv?(result: BucketImport, fileName: string | null): void;
   /** Content shown above the steps (e.g. board name field). */
   header?: ReactNode;
   confirmLabel(count: number): string;
@@ -28,6 +33,12 @@ interface Props {
 
 const EXAMPLE = 'doctor/nurse/pharmacist/customer service/product quality/apple/orange/banana';
 
+function csvConfirmLabel(r: BucketImport): string {
+  const items = r.ungrouped.length + r.buckets.reduce((n, b) => n + b.items.length, 0);
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  return `Create board with ${plural(r.buckets.length, 'bucket')} and ${plural(items, 'item')} →`;
+}
+
 /** Suggest a delimiter that would split the text when the current one finds only a single item. */
 function suggestDelimiter(text: string, current: string): string | null {
   for (const d of [NEWLINE_DELIMITER, ',', ';', '|', '/', '\t']) {
@@ -36,7 +47,16 @@ function suggestDelimiter(text: string, current: string): string | null {
   return null;
 }
 
-export default function ItemsWizard({ initialDelimiter, allowEmpty, header, confirmLabel, onConfirm, onCancel }: Props) {
+export default function ItemsWizard({
+  initialDelimiter,
+  allowEmpty,
+  allowCsvImport,
+  onImportCsv,
+  header,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: Props) {
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [source, setSource] = useState<Source>('paste');
   const [text, setText] = useState('');
@@ -47,6 +67,9 @@ export default function ItemsWizard({ initialDelimiter, allowEmpty, header, conf
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [edited, setEdited] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [csvText, setCsvText] = useState('');
+  const [csvFileName, setCsvFileName] = useState<string | null>(null);
+  const csvParsed = useMemo(() => (source === 'csv' ? parseCsvSafely(csvText) : null), [source, csvText]);
 
   const delimiterError = validateDelimiter(delimiter);
   const parsed = useMemo(() => parseItems(text, delimiter), [text, delimiter]);
@@ -145,6 +168,11 @@ export default function ItemsWizard({ initialDelimiter, allowEmpty, header, conf
         <button type="button" role="tab" aria-selected={source === 'upload'} className={`tab ${source === 'upload' ? 'active' : ''}`} onClick={() => setSource('upload')}>
           Upload file
         </button>
+        {allowCsvImport && (
+          <button type="button" role="tab" aria-selected={source === 'csv'} className={`tab ${source === 'csv' ? 'active' : ''}`} onClick={() => setSource('csv')}>
+            Import CSV
+          </button>
+        )}
         {allowEmpty && (
           <button type="button" role="tab" aria-selected={source === 'empty'} className={`tab ${source === 'empty' ? 'active' : ''}`} onClick={() => setSource('empty')}>
             Start empty
@@ -152,7 +180,15 @@ export default function ItemsWizard({ initialDelimiter, allowEmpty, header, conf
         )}
       </div>
 
-      {source === 'empty' ? (
+      {source === 'csv' ? (
+        <CsvImportPanel
+          text={csvText}
+          onText={setCsvText}
+          fileName={csvFileName}
+          onFileName={setCsvFileName}
+          parsed={csvParsed}
+        />
+      ) : source === 'empty' ? (
         <div className="panel empty-panel">
           <p>Start with an empty board and add items later with <strong>Add items</strong> on the board.</p>
         </div>
@@ -269,7 +305,16 @@ export default function ItemsWizard({ initialDelimiter, allowEmpty, header, conf
           Cancel
         </button>
         <span className="spacer" />
-        {source === 'empty' ? (
+        {source === 'csv' ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!csvParsed?.ok}
+            onClick={() => csvParsed?.ok && onImportCsv?.(csvParsed.result, csvFileName)}
+          >
+            {csvParsed?.ok ? csvConfirmLabel(csvParsed.result) : 'Create board'}
+          </button>
+        ) : source === 'empty' ? (
           <button type="button" className="btn btn-primary" onClick={() => onConfirm([], delimiter)}>
             Create empty board
           </button>

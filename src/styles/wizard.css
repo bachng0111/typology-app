@@ -222,3 +222,54 @@
   text-align: center;
   color: var(--muted);
 }
+
+/* CSV import */
+.csv-help {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+.csv-example {
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.csv-example th,
+.csv-example td {
+  padding: 3px 12px;
+  border: 1px solid var(--border-strong);
+  text-align: left;
+}
+.csv-example th {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.csv-preview {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.csv-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.csv-preview li:last-child {
+  border-bottom: 0;
+}
+.csv-bucket-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.csv-ungrouped {
+  background: #f8fafc;
+}

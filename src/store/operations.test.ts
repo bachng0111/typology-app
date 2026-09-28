@@ -155,3 +155,45 @@ describe('sticky notes', () => {
     expect(rectsOverlap(rect, ops.noteRect(n.content.notes[n.id]))).toBe(false);
   });
 });
+
+describe('createImportedContent', () => {
+  const spec = {
+    buckets: [
+      { name: 'Big', items: Array.from({ length: 30 }, (_, i) => `item number ${i}`) },
+      { name: 'Small', items: ['a', 'b'] },
+      { name: 'Empty', items: [] },
+    ],
+    ungrouped: ['loose one', 'loose two', 'loose three'],
+  };
+
+  it('creates buckets with membership and loose items', () => {
+    const c = ops.createImportedContent(spec);
+    const buckets = c.bucketOrder.map((id) => c.buckets[id]);
+    expect(buckets.map((b) => b.name)).toEqual(['Big', 'Small', 'Empty']);
+    expect(buckets.map((b) => b.itemIds.map((id) => c.items[id].text))).toEqual(spec.buckets.map((b) => b.items));
+    expect(ops.ungroupedIds(c).map((id) => c.items[id].text).sort()).toEqual([...spec.ungrouped].sort());
+    expect(new Set(buckets.map((b) => b.colorIndex)).size).toBe(3);
+  });
+
+  it('sizes buckets by how many items they hold', () => {
+    const c = ops.createImportedContent(spec);
+    const [big, small, empty] = c.bucketOrder.map((id) => c.buckets[id]);
+    expect(big.w * big.h).toBeGreaterThan(small.w * small.h);
+    expect(small.h).toBeLessThan(ops.DEFAULT_BUCKET_H);
+    expect(empty).toMatchObject({ w: ops.DEFAULT_BUCKET_W, h: ops.DEFAULT_BUCKET_H });
+  });
+
+  it('lays out buckets and loose items without overlaps', () => {
+    const many = {
+      buckets: Array.from({ length: 12 }, (_, i) => ({ name: `B${i}`, items: Array.from({ length: i * 3 }, (_, j) => `x${j}`) })),
+      ungrouped: Array.from({ length: 40 }, (_, i) => `loose ${i}`),
+    };
+    const c = ops.createImportedContent(many);
+    const rects = [
+      ...c.bucketOrder.map((id) => ops.bucketRect(c.buckets[id])),
+      ...ops.ungroupedIds(c).map((id) => ops.itemRect(c.items[id])),
+    ];
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+  });
+});
